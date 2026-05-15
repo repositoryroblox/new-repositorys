@@ -27,35 +27,35 @@ end
 local GAMES = {
 	["3226555017"] = {
 		name = "SCP: Site Roleplay",
-		url = "https://api.jnkie.com/api/v1/luascripts/public/4fa86c6a73196bf8a2bb94234c069925d24fb2d6beeebb8683e6dd0c997c3c8a/download"
+		url = "https://jnkie.com"
 	},
 	["12196278347"] = {
 		name = "Refinery Caves 2",
-		url = "https://api.jnkie.com/api/v1/luascripts/public/b58914084e6def7d6d6476aa75b1c028075cfe85156ae93a027d09f38a72c721/download"
+		url = "https://jnkie.com"
 	},
 	["98626216952426"] = {
 		name = "Naramo Nuclear Plant",
-		url = "https://api.jnkie.com/api/v1/luascripts/public/86e7ce3479f8686809da4db8bc437a2e1800e4f83f223d0d091e3a9f06c41680/download"
+		url = "https://jnkie.com"
 	},
 	["6172932937"] = {
 		name = "Energy Assault",
-		url = "https://api.jnkie.com/api/v1/luascripts/public/a2a45e4964bf767b1ad70f5f8ee2882fde0a548fe15110fc43c3969c7475fef0/download"
+		url = "https://jnkie.com"
 	},
 	["863266079"] = {
 		name = "Apocalypse Rising 2",
-		url = "https://api.jnkie.com/api/v1/luascripts/public/6bed93c42a6aea7af5193c70d2e9d0abfeaf0db4114e7ecf2bb9d0d6d81d3d03/download"
+		url = "https://jnkie.com"
 	},
 	["10077968348"] = {
 		name = "Apocalypse Rising 2",
-		url = "https://api.jnkie.com/api/v1/luascripts/public/6bed93c42a6aea7af5193c70d2e9d0abfeaf0db4114e7ecf2bb9d0d6d81d3d03/download"
+		url = "https://jnkie.com"
 	},
 	["93911318070665"] = {
 		name = "Apocalypse Rising 2",
-		url = "https://api.jnkie.com/api/v1/luascripts/public/6bed93c42a6aea7af5193c70d2e9d0abfeaf0db4114e7ecf2bb9d0d6d81d3d03/download"
+		url = "https://jnkie.com"
 	},
 	["105446216022659"] = {
 		name = "Apocalypse Rising 2",
-		url = "https://api.jnkie.com/api/v1/luascripts/public/6bed93c42a6aea7af5193c70d2e9d0abfeaf0db4114e7ecf2bb9d0d6d81d3d03/download"
+		url = "https://jnkie.com"
 	},
 	["4747446334"] = {
 		name = "Blackhawk Rescue Mission 5",
@@ -105,4 +105,43 @@ end)
 
 task.wait(1)
 
-loadstring(game:HttpGet(entry.url))()
+-- [[ FIX & BYPASS ENGINE START ]]
+-- 1. Overwrite environment storage variables globally inside Yub-X
+local env = getgenv and getgenv() or _G
+env.Whitelisted = true
+env.IsPremium = true
+env.MultyHubPremium = true
+
+-- 2. Intercept the network traffic to force a success response if the script calls home
+local originalRequest
+originalRequest = hookfunction(request or http_request or (syn and syn.request), function(options)
+    if options and options.Url and string.find(options.Url, "api.jnkie.com") then
+        print("[BYPASS] Key check intercepted! Spoofing access approval.")
+        return {
+            StatusCode = 200,
+            Body = '{"valid": true, "premium": true, "message": "Access Granted", "error": null}'
+        }
+    end
+    return originalRequest(options)
+end)
+
+-- 3. Run the targeted game payload text via a protected call stream
+local success, scriptContent = pcall(function()
+    return game:HttpGet(entry.url)
+end)
+
+if success and scriptContent then
+    -- Modify local hardcoded security failure toggles within the downloaded string 
+    scriptContent = string.gsub(scriptContent, "valid = false", "valid = true")
+    scriptContent = string.gsub(scriptContent, "Whitelisted = false", "Whitelisted = true")
+    
+    local exec, compileError = loadstring(scriptContent)
+    if exec then
+        exec()
+        print("[SUCCESS] Multy Hub bypassed and running!")
+    else
+        warn("[ERROR] Code compilation failed: ", compileError)
+    end
+else
+    warn("[ERROR] Failed to fetch script layout from endpoint.")
+end
